@@ -16,6 +16,9 @@ export const ResumeUploader = ({ onUpload }: ResumeUploaderProps) => {
   useEffect(() => {
     const initializeWorker = async () => {
       try {
+        // Wait a bit to ensure the worker is loaded
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        
         // Test the worker by loading a simple PDF
         const testPdf = new Uint8Array([0x25, 0x50, 0x44, 0x46]); // %PDF
         const loadingTask = pdfjsLib.getDocument({ data: testPdf });
@@ -24,8 +27,12 @@ export const ResumeUploader = ({ onUpload }: ResumeUploaderProps) => {
         setError('');
       } catch (err) {
         console.error('Failed to initialize PDF.js worker:', err);
-        setError('PDF processing is not available. Please try again later.');
-        setWorkerInitialized(false);
+        // Don't set error immediately, try again after a delay
+        setTimeout(() => {
+          if (!workerInitialized) {
+            setError('PDF processing is not available. Please try again later.');
+          }
+        }, 2000);
       }
     };
 
@@ -147,6 +154,8 @@ export const ResumeUploader = ({ onUpload }: ResumeUploaderProps) => {
           <div className="flex justify-center">
             {isUploading ? (
               <div className="w-16 h-16 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+            ) : !workerInitialized ? (
+              <div className="w-16 h-16 border-4 border-gray-300 border-t-transparent rounded-full animate-spin"></div>
             ) : (
               <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center">
                 <Upload className="w-8 h-8 text-blue-600" />
@@ -156,11 +165,13 @@ export const ResumeUploader = ({ onUpload }: ResumeUploaderProps) => {
 
           <div>
             <h3 className="text-xl font-semibold text-gray-900 mb-2">
-              {isUploading ? 'Processing Resume...' : 'Upload Your Resume'}
+              {isUploading ? 'Processing Resume...' : !workerInitialized ? 'Initializing...' : 'Upload Your Resume'}
             </h3>
             <p className="text-gray-600">
               {isDragActive
                 ? 'Drop your PDF resume here'
+                : !workerInitialized
+                ? 'Please wait while we initialize PDF processing...'
                 : 'Drag and drop your PDF resume, or click to browse'
               }
             </p>
