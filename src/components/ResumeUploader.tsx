@@ -14,13 +14,22 @@ export const ResumeUploader = ({ onUpload }: ResumeUploaderProps) => {
   const [workerInitialized, setWorkerInitialized] = useState(false);
 
   useEffect(() => {
-    // Ensure worker is initialized
-    if (!pdfjsLib.GlobalWorkerOptions.workerSrc) {
-      console.error('PDF.js worker not initialized');
-      setError('PDF processing is not available. Please try again later.');
-    } else {
-      setWorkerInitialized(true);
-    }
+    const initializeWorker = async () => {
+      try {
+        // Test the worker by loading a simple PDF
+        const testPdf = new Uint8Array([0x25, 0x50, 0x44, 0x46]); // %PDF
+        const loadingTask = pdfjsLib.getDocument({ data: testPdf });
+        await loadingTask.promise;
+        setWorkerInitialized(true);
+        setError('');
+      } catch (err) {
+        console.error('Failed to initialize PDF.js worker:', err);
+        setError('PDF processing is not available. Please try again later.');
+        setWorkerInitialized(false);
+      }
+    };
+
+    initializeWorker();
   }, []);
 
   const extractTextFromPDF = async (file: File): Promise<string> => {
@@ -110,7 +119,7 @@ export const ResumeUploader = ({ onUpload }: ResumeUploaderProps) => {
     } finally {
       setIsUploading(false);
     }
-  }, [onUpload]);
+  }, [onUpload, workerInitialized]);
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
@@ -119,7 +128,7 @@ export const ResumeUploader = ({ onUpload }: ResumeUploaderProps) => {
     },
     maxFiles: 1,
     maxSize: 10 * 1024 * 1024, // 10MB
-    disabled: isUploading
+    disabled: isUploading || !workerInitialized
   });
 
   return (
@@ -129,7 +138,7 @@ export const ResumeUploader = ({ onUpload }: ResumeUploaderProps) => {
         className={`
           relative border-2 border-dashed rounded-lg p-8 text-center cursor-pointer transition-all duration-200
           ${isDragActive ? 'border-blue-400 bg-blue-50' : 'border-gray-300 hover:border-blue-400 hover:bg-blue-50'}
-          ${isUploading ? 'pointer-events-none opacity-50' : ''}
+          ${(isUploading || !workerInitialized) ? 'pointer-events-none opacity-50' : ''}
         `}
       >
         <input {...getInputProps()} />
