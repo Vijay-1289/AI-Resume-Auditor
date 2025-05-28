@@ -32,24 +32,9 @@ export const AnalysisResults = ({
   onAnalysisComplete
 }: AnalysisResultsProps) => {
   const { toast } = useToast();
-  const [apiKey, setApiKey] = useState('');
-  const [showApiKeyInput, setShowApiKeyInput] = useState(false);
-
-  useEffect(() => {
-    const savedApiKey = localStorage.getItem('openai_api_key');
-    if (savedApiKey) {
-      setApiKey(savedApiKey);
-    } else {
-      setShowApiKeyInput(true);
-    }
-  }, []);
+  const [apiKey] = useState('AIzaSyBDyCo1au9mtyBoUvzGcmChR3mY9EfMwBg');
 
   const analyzeResume = async () => {
-    if (!apiKey) {
-      setShowApiKeyInput(true);
-      return;
-    }
-
     try {
       const response = await fetch('https://api.openai.com/v1/chat/completions', {
         method: 'POST',
@@ -105,19 +90,8 @@ export const AnalysisResults = ({
       console.error('Analysis error:', error);
       toast({
         title: "Analysis Failed",
-        description: "Please check your API key and try again.",
+        description: "There was an error analyzing your resume. Please try again.",
         variant: "destructive",
-      });
-    }
-  };
-
-  const handleApiKeySubmit = () => {
-    if (apiKey.trim()) {
-      localStorage.setItem('openai_api_key', apiKey);
-      setShowApiKeyInput(false);
-      toast({
-        title: "API Key Saved",
-        description: "You can now analyze your resume.",
       });
     }
   };
@@ -133,41 +107,6 @@ export const AnalysisResults = ({
     if (score >= 60) return 'bg-yellow-100';
     return 'bg-red-100';
   };
-
-  if (showApiKeyInput) {
-    return (
-      <Card className="max-w-md mx-auto">
-        <CardHeader>
-          <CardTitle className="flex items-center space-x-2">
-            <Brain className="w-5 h-5" />
-            <span>OpenAI API Key Required</span>
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <p className="text-sm text-gray-600">
-            To analyze your resume with AI, please enter your OpenAI API key. 
-            Your key will be stored locally and never shared.
-          </p>
-          <input
-            type="password"
-            placeholder="sk-..."
-            value={apiKey}
-            onChange={(e) => setApiKey(e.target.value)}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-          />
-          <Button onClick={handleApiKeySubmit} className="w-full">
-            Save API Key & Continue
-          </Button>
-          <p className="text-xs text-gray-500">
-            Don't have an API key? Get one at{' '}
-            <a href="https://platform.openai.com/api-keys" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">
-              OpenAI Platform
-            </a>
-          </p>
-        </CardContent>
-      </Card>
-    );
-  }
 
   if (!analysis && !isAnalyzing) {
     return (
