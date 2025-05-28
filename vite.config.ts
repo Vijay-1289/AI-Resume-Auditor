@@ -13,11 +13,11 @@ export default defineConfig(({ mode }) => ({
     target: "esnext",
     rollupOptions: {
       output: {
-        // Removed manualChunks for pdfjs-dist to let Vite handle worker bundling
-        // manualChunks: {
-        //   pdfjs: ['pdfjs-dist'],
-        // },
+        manualChunks: {
+          pdfjs: ['pdfjs-dist'],
+        },
       },
+      external: ['pdfjs-dist/build/pdf.worker.min.js'], // Externalize the worker file to prevent build error
     },
   },
   plugins: [
@@ -33,6 +33,7 @@ export default defineConfig(({ mode }) => ({
   optimizeDeps: {
     include: ['pdfjs-dist'],
   },
-  publicDir: 'public',
-  assetsInclude: ['**/*.worker.min.js'], // Explicitly include worker files as assets
+  // Removed assetsInclude and publicDir as the worker is externalized and loaded via CDN
+  // assetsInclude: ['**/*.worker.min.js'],
+  // publicDir: 'public',
 }));
