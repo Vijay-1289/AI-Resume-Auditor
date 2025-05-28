@@ -2,9 +2,10 @@ import { useCallback, useState, useEffect } from 'react';
 import { useDropzone } from 'react-dropzone';
 import { Upload, FileText, AlertCircle } from 'lucide-react';
 import * as pdfjsLib from 'pdfjs-dist';
+import pdfjsWorker from 'pdfjs-dist/build/pdf.worker.entry';
 
 // Set up PDF.js worker
-pdfjsLib.GlobalWorkerOptions.workerSrc = '/pdf.worker/pdf.worker.min.js';
+pdfjsLib.GlobalWorkerOptions.workerSrc = pdfjsWorker;
 
 interface ResumeUploaderProps {
   onUpload: (text: string) => void;
