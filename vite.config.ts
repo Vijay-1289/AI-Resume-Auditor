@@ -17,7 +17,6 @@ export default defineConfig(({ mode }) => ({
           pdfjs: ['pdfjs-dist'],
         },
       },
-      external: ['pdfjs-dist/build/pdf.worker.entry'],
     },
   },
   plugins: [
@@ -31,6 +30,6 @@ export default defineConfig(({ mode }) => ({
     },
   },
   optimizeDeps: {
-    include: ['pdfjs-dist/build/pdf.worker.entry'],
+    include: ['pdfjs-dist'],
   },
 }));
