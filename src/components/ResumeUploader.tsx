@@ -2,7 +2,6 @@ import { useCallback, useState, useEffect } from 'react';
 import { useDropzone } from 'react-dropzone';
 import { Upload, FileText, AlertCircle } from 'lucide-react';
 import * as pdfjsLib from 'pdfjs-dist';
-// import '../lib/pdfjs-worker'; // Worker setup will be done here
 
 // Import the worker script using Vite's asset handling
 // @ts-ignore // Ignore TypeScript error for importing worker file directly
@@ -20,6 +19,7 @@ export const ResumeUploader = ({ onUpload }: ResumeUploaderProps) => {
   useEffect(() => {
     const initializeWorker = async () => {
       try {
+        console.log('Attempting to initialize PDF.js worker...');
         // Create a new worker instance using Vite's asset handling
         // This ensures the worker file is bundled and served correctly.
         const worker = new Worker(PdfWorker);
@@ -36,11 +36,8 @@ export const ResumeUploader = ({ onUpload }: ResumeUploaderProps) => {
         await loadingTask.promise;
 
         setWorkerInitialized(true);
-        setError('');
+        setError(''); // Clear any previous error on successful init
         console.log('PDF.js worker initialized successfully.');
-
-        // Clean up the test worker port after successful initialization
-        // worker.terminate(); // We cannot terminate here as PDF.js will use it later
 
       } catch (err) {
         console.error('Failed to initialize PDF.js worker:', err);
@@ -51,7 +48,7 @@ export const ResumeUploader = ({ onUpload }: ResumeUploaderProps) => {
 
     initializeWorker();
 
-     // Clean up worker on component unmount (optional but good practice)
+    // Optional: Clean up worker on component unmount
     // return () => {
     //   if (pdfjsLib.GlobalWorkerOptions.workerPort) {
     //     (pdfjsLib.GlobalWorkerOptions.workerPort as Worker).terminate();
@@ -63,6 +60,7 @@ export const ResumeUploader = ({ onUpload }: ResumeUploaderProps) => {
 
   const extractTextFromPDF = async (file: File): Promise<string> => {
     if (!workerInitialized) {
+      // This case should ideally be prevented by disabling the dropzone
       throw new Error('PDF processing is not available. Please refresh the page and try again.');
     }
 
