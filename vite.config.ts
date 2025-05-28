@@ -13,9 +13,10 @@ export default defineConfig(({ mode }) => ({
     target: "esnext",
     rollupOptions: {
       output: {
-        manualChunks: {
-          pdfjs: ['pdfjs-dist'],
-        },
+        // Removed manualChunks for pdfjs-dist to let Vite handle worker bundling
+        // manualChunks: {
+        //   pdfjs: ['pdfjs-dist'],
+        // },
       },
     },
   },
@@ -33,4 +34,5 @@ export default defineConfig(({ mode }) => ({
     include: ['pdfjs-dist'],
   },
   publicDir: 'public',
+  assetsInclude: ['**/*.worker.min.js'], // Explicitly include worker files as assets
 }));

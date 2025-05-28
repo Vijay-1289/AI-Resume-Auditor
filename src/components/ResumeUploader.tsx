@@ -2,7 +2,11 @@ import { useCallback, useState, useEffect } from 'react';
 import { useDropzone } from 'react-dropzone';
 import { Upload, FileText, AlertCircle } from 'lucide-react';
 import * as pdfjsLib from 'pdfjs-dist';
-import '../lib/pdfjs-worker';
+// import '../lib/pdfjs-worker'; // Worker setup will be done here
+
+// Import the worker script using Vite's asset handling
+// @ts-ignore // Ignore TypeScript error for importing worker file directly
+import PdfWorker from 'pdfjs-dist/build/pdf.worker.min.js';
 
 interface ResumeUploaderProps {
   onUpload: (text: string) => void;
@@ -12,36 +16,50 @@ export const ResumeUploader = ({ onUpload }: ResumeUploaderProps) => {
   const [isUploading, setIsUploading] = useState(false);
   const [error, setError] = useState<string>('');
   const [workerInitialized, setWorkerInitialized] = useState(false);
-  const [retryCount, setRetryCount] = useState(0);
 
   useEffect(() => {
     const initializeWorker = async () => {
       try {
-        // Wait for the worker to be loaded
-        await new Promise(resolve => setTimeout(resolve, 2000));
-        
+        // Create a new worker instance using Vite's asset handling
+        // This ensures the worker file is bundled and served correctly.
+        const worker = new Worker(PdfWorker);
+
+        // Set the worker instance for PDF.js
+        pdfjsLib.GlobalWorkerOptions.workerPort = worker;
+
+        // Wait a bit for the worker to be ready
+        await new Promise(resolve => setTimeout(resolve, 1000));
+
         // Test the worker by loading a simple PDF
         const testPdf = new Uint8Array([0x25, 0x50, 0x44, 0x46]); // %PDF
         const loadingTask = pdfjsLib.getDocument({ data: testPdf });
         await loadingTask.promise;
+
         setWorkerInitialized(true);
         setError('');
-        setRetryCount(0);
+        console.log('PDF.js worker initialized successfully.');
+
+        // Clean up the test worker port after successful initialization
+        // worker.terminate(); // We cannot terminate here as PDF.js will use it later
+
       } catch (err) {
         console.error('Failed to initialize PDF.js worker:', err);
-        
-        // Retry up to 3 times
-        if (retryCount < 3) {
-          setRetryCount(prev => prev + 1);
-          setTimeout(initializeWorker, 2000);
-        } else {
-          setError('PDF processing is not available. Please refresh the page and try again.');
-        }
+        setError('PDF processing is not available. Please refresh the page and try again.');
+        setWorkerInitialized(false);
       }
     };
 
     initializeWorker();
-  }, [retryCount]);
+
+     // Clean up worker on component unmount (optional but good practice)
+    // return () => {
+    //   if (pdfjsLib.GlobalWorkerOptions.workerPort) {
+    //     (pdfjsLib.GlobalWorkerOptions.workerPort as Worker).terminate();
+    //     pdfjsLib.GlobalWorkerOptions.workerPort = null;
+    //   }
+    // };
+
+  }, []);
 
   const extractTextFromPDF = async (file: File): Promise<string> => {
     if (!workerInitialized) {
@@ -50,7 +68,7 @@ export const ResumeUploader = ({ onUpload }: ResumeUploaderProps) => {
 
     try {
       console.log('Starting PDF text extraction...');
-      
+
       // Validate file size (max 10MB)
       if (file.size > 10 * 1024 * 1024) {
         throw new Error('File size exceeds 10MB limit');
@@ -63,17 +81,17 @@ export const ResumeUploader = ({ onUpload }: ResumeUploaderProps) => {
 
       const arrayBuffer = await file.arrayBuffer();
       console.log('File loaded, processing with PDF.js...');
-      
+
       // Load the PDF document with error handling
       const loadingTask = pdfjsLib.getDocument({ data: arrayBuffer });
       const pdf = await loadingTask.promise;
-      
+
       if (!pdf || pdf.numPages === 0) {
         throw new Error('Invalid PDF file or empty document');
       }
-      
+
       console.log(`PDF loaded successfully, pages: ${pdf.numPages}`);
-      
+
       let fullText = '';
       const maxPages = 10; // Limit to prevent processing extremely large documents
 
@@ -81,7 +99,7 @@ export const ResumeUploader = ({ onUpload }: ResumeUploaderProps) => {
         console.log(`Processing page ${pageNum}...`);
         const page = await pdf.getPage(pageNum);
         const textContent = await page.getTextContent();
-        
+
         if (!textContent || !textContent.items || textContent.items.length === 0) {
           console.warn(`No text content found on page ${pageNum}`);
           continue;
@@ -153,7 +171,7 @@ export const ResumeUploader = ({ onUpload }: ResumeUploaderProps) => {
         `}
       >
         <input {...getInputProps()} />
-        
+
         <div className="space-y-4">
           <div className="flex justify-center">
             {isUploading ? (
@@ -175,7 +193,7 @@ export const ResumeUploader = ({ onUpload }: ResumeUploaderProps) => {
               {isDragActive
                 ? 'Drop your PDF resume here'
                 : !workerInitialized
-                ? `Please wait while we initialize PDF processing...${retryCount > 0 ? ` (Attempt ${retryCount + 1}/3)` : ''}`
+                ? `Please wait while we initialize PDF processing...`
                 : 'Drag and drop your PDF resume, or click to browse'
               }
             </p>
