@@ -11,15 +11,23 @@ interface ResumeUploaderProps {
 export const ResumeUploader = ({ onUpload }: ResumeUploaderProps) => {
   const [isUploading, setIsUploading] = useState(false);
   const [error, setError] = useState<string>('');
+  const [workerInitialized, setWorkerInitialized] = useState(false);
 
   useEffect(() => {
     // Ensure worker is initialized
     if (!pdfjsLib.GlobalWorkerOptions.workerSrc) {
       console.error('PDF.js worker not initialized');
+      setError('PDF processing is not available. Please try again later.');
+    } else {
+      setWorkerInitialized(true);
     }
   }, []);
 
   const extractTextFromPDF = async (file: File): Promise<string> => {
+    if (!workerInitialized) {
+      throw new Error('PDF processing is not available. Please try again later.');
+    }
+
     try {
       console.log('Starting PDF text extraction...');
       

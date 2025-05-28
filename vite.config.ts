@@ -32,5 +32,4 @@ export default defineConfig(({ mode }) => ({
   optimizeDeps: {
     include: ['pdfjs-dist'],
   },
-  assetsInclude: ['**/*.worker.js'],
 }));
