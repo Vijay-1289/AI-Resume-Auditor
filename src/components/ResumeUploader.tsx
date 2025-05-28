@@ -1,10 +1,11 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useState, useEffect } from 'react';
 import { useDropzone } from 'react-dropzone';
 import { Upload, FileText, AlertCircle } from 'lucide-react';
 import * as pdfjsLib from 'pdfjs-dist';
 
-// Set up PDF.js worker - use CDN fallback that works in production
-pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`;
+// Set up PDF.js worker
+const pdfjsWorker = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`;
+pdfjsLib.GlobalWorkerOptions.workerSrc = pdfjsWorker;
 
 interface ResumeUploaderProps {
   onUpload: (text: string) => void;
@@ -17,28 +18,64 @@ export const ResumeUploader = ({ onUpload }: ResumeUploaderProps) => {
   const extractTextFromPDF = async (file: File): Promise<string> => {
     try {
       console.log('Starting PDF text extraction...');
+      
+      // Validate file size (max 10MB)
+      if (file.size > 10 * 1024 * 1024) {
+        throw new Error('File size exceeds 10MB limit');
+      }
+
+      // Validate file type
+      if (file.type !== 'application/pdf') {
+        throw new Error('Only PDF files are supported');
+      }
+
       const arrayBuffer = await file.arrayBuffer();
       console.log('File loaded, processing with PDF.js...');
       
-      const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+      // Load the PDF document with error handling
+      const loadingTask = pdfjsLib.getDocument({ data: arrayBuffer });
+      const pdf = await loadingTask.promise;
+      
+      if (!pdf || pdf.numPages === 0) {
+        throw new Error('Invalid PDF file or empty document');
+      }
+      
       console.log(`PDF loaded successfully, pages: ${pdf.numPages}`);
       
       let fullText = '';
+      const maxPages = 10; // Limit to prevent processing extremely large documents
 
-      for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
+      for (let pageNum = 1; pageNum <= Math.min(pdf.numPages, maxPages); pageNum++) {
         console.log(`Processing page ${pageNum}...`);
         const page = await pdf.getPage(pageNum);
         const textContent = await page.getTextContent();
+        
+        if (!textContent || !textContent.items || textContent.items.length === 0) {
+          console.warn(`No text content found on page ${pageNum}`);
+          continue;
+        }
+
         const pageText = textContent.items
           .map((item: any) => item.str)
-          .join(' ');
-        fullText += pageText + '\n';
+          .join(' ')
+          .trim();
+
+        if (pageText) {
+          fullText += pageText + '\n';
+        }
+      }
+
+      if (!fullText.trim()) {
+        throw new Error('No text could be extracted from the PDF');
       }
 
       console.log(`Text extraction complete. Total length: ${fullText.length}`);
       return fullText;
     } catch (error) {
       console.error('Error extracting text from PDF:', error);
+      if (error instanceof Error) {
+        throw new Error(`Failed to extract text from PDF: ${error.message}`);
+      }
       throw new Error('Failed to extract text from PDF');
     }
   };
@@ -69,6 +106,7 @@ export const ResumeUploader = ({ onUpload }: ResumeUploaderProps) => {
       'application/pdf': ['.pdf']
     },
     maxFiles: 1,
+    maxSize: 10 * 1024 * 1024, // 10MB
     disabled: isUploading
   });
 
