@@ -4,8 +4,11 @@ import { useDropzone } from 'react-dropzone';
 import { Upload, FileText, AlertCircle } from 'lucide-react';
 import * as pdfjsLib from 'pdfjs-dist';
 
-// Set up PDF.js worker
-pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`;
+// Set up PDF.js worker - use the version from node_modules
+pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
+  'pdfjs-dist/build/pdf.worker.min.js',
+  import.meta.url
+).toString();
 
 interface ResumeUploaderProps {
   onUpload: (text: string) => void;
@@ -17,11 +20,17 @@ export const ResumeUploader = ({ onUpload }: ResumeUploaderProps) => {
 
   const extractTextFromPDF = async (file: File): Promise<string> => {
     try {
+      console.log('Starting PDF text extraction...');
       const arrayBuffer = await file.arrayBuffer();
+      console.log('File loaded, processing with PDF.js...');
+      
       const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+      console.log(`PDF loaded successfully, pages: ${pdf.numPages}`);
+      
       let fullText = '';
 
       for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
+        console.log(`Processing page ${pageNum}...`);
         const page = await pdf.getPage(pageNum);
         const textContent = await page.getTextContent();
         const pageText = textContent.items
@@ -30,6 +39,7 @@ export const ResumeUploader = ({ onUpload }: ResumeUploaderProps) => {
         fullText += pageText + '\n';
       }
 
+      console.log(`Text extraction complete. Total length: ${fullText.length}`);
       return fullText;
     } catch (error) {
       console.error('Error extracting text from PDF:', error);
