@@ -4,10 +4,6 @@ import { Upload, FileText, AlertCircle } from 'lucide-react';
 import * as pdfjsLib from 'pdfjs-dist';
 import '../lib/pdfjs-worker';
 
-// Set up PDF.js worker
-const pdfjsVersion = '4.0.379';
-pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsVersion}/pdf.worker.min.js`;
-
 interface ResumeUploaderProps {
   onUpload: (text: string) => void;
 }
@@ -15,6 +11,13 @@ interface ResumeUploaderProps {
 export const ResumeUploader = ({ onUpload }: ResumeUploaderProps) => {
   const [isUploading, setIsUploading] = useState(false);
   const [error, setError] = useState<string>('');
+
+  useEffect(() => {
+    // Ensure worker is initialized
+    if (!pdfjsLib.GlobalWorkerOptions.workerSrc) {
+      console.error('PDF.js worker not initialized');
+    }
+  }, []);
 
   const extractTextFromPDF = async (file: File): Promise<string> => {
     try {
