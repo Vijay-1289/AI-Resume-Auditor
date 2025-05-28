@@ -12,12 +12,13 @@ export const ResumeUploader = ({ onUpload }: ResumeUploaderProps) => {
   const [isUploading, setIsUploading] = useState(false);
   const [error, setError] = useState<string>('');
   const [workerInitialized, setWorkerInitialized] = useState(false);
+  const [retryCount, setRetryCount] = useState(0);
 
   useEffect(() => {
     const initializeWorker = async () => {
       try {
-        // Wait a bit to ensure the worker is loaded
-        await new Promise(resolve => setTimeout(resolve, 1000));
+        // Wait for the worker to be loaded
+        await new Promise(resolve => setTimeout(resolve, 2000));
         
         // Test the worker by loading a simple PDF
         const testPdf = new Uint8Array([0x25, 0x50, 0x44, 0x46]); // %PDF
@@ -25,23 +26,26 @@ export const ResumeUploader = ({ onUpload }: ResumeUploaderProps) => {
         await loadingTask.promise;
         setWorkerInitialized(true);
         setError('');
+        setRetryCount(0);
       } catch (err) {
         console.error('Failed to initialize PDF.js worker:', err);
-        // Don't set error immediately, try again after a delay
-        setTimeout(() => {
-          if (!workerInitialized) {
-            setError('PDF processing is not available. Please try again later.');
-          }
-        }, 2000);
+        
+        // Retry up to 3 times
+        if (retryCount < 3) {
+          setRetryCount(prev => prev + 1);
+          setTimeout(initializeWorker, 2000);
+        } else {
+          setError('PDF processing is not available. Please refresh the page and try again.');
+        }
       }
     };
 
     initializeWorker();
-  }, []);
+  }, [retryCount]);
 
   const extractTextFromPDF = async (file: File): Promise<string> => {
     if (!workerInitialized) {
-      throw new Error('PDF processing is not available. Please try again later.');
+      throw new Error('PDF processing is not available. Please refresh the page and try again.');
     }
 
     try {
@@ -171,7 +175,7 @@ export const ResumeUploader = ({ onUpload }: ResumeUploaderProps) => {
               {isDragActive
                 ? 'Drop your PDF resume here'
                 : !workerInitialized
-                ? 'Please wait while we initialize PDF processing...'
+                ? `Please wait while we initialize PDF processing...${retryCount > 0 ? ` (Attempt ${retryCount + 1}/3)` : ''}`
                 : 'Drag and drop your PDF resume, or click to browse'
               }
             </p>
